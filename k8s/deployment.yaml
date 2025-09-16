@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwebui-content-sync
+  labels:
+    app: openwebui-content-sync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openwebui-content-sync
+  template:
+    metadata:
+      labels:
+        app: openwebui-content-sync
+    spec:
+      containers:
+      - name: connector
+        image: castaiphil/openwebui-content-sync:latest
+        imagePullPolicy: Always
+        env:
+        - name: OPENWEBUI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwebui-secrets
+              key: api-key
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-secrets
+              key: token
+        - name: GITHUB_KNOWLEDGE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: connector-config
+              key: knowledge-id
+        - name: CONFLUENCE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: confluence-secrets
+              key: api-key
+        - name: STORAGE_PATH
+          value: "/data"
+        - name: LOG_LEVEL
+          value: "info"
+        volumeMounts:
+        - name: data-storage
+          mountPath: /data
+        - name: config
+          mountPath: /root/config.yaml
+          subPath: config.yaml
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: connector-data-pvc
+      - name: config
+        configMap:
+          name: connector-config
+      - name: confluence-secrets
+        secret:
+          secretName: confluence-secrets
+      restartPolicy: Always

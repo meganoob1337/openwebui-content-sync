@@ -1,0 +1,109 @@
+# Example configuration for OpenWebUI GitHub Connector
+# Copy this file to config.yaml and update the values
+
+log_level: info
+
+# Sync schedule configuration
+schedule:
+  interval: 1h  # Options: 30m, 1h, 2h, 6h, 12h, 24h
+
+# Local storage configuration
+storage:
+  path: /data  # Path where files will be stored locally
+
+# OpenWebUI API configuration
+openwebui:
+  base_url: "http://localhost:8080"  # OpenWebUI instance URL
+  api_key: ""  # Set via OPENWEBUI_API_KEY environment variable
+
+# GitHub adapter configuration
+github:
+  enabled: true
+  token: ""  # Set via GITHUB_TOKEN environment variable
+  repositories:
+    - "owner/repo1"  # Format: owner/repository
+    - "owner/repo2"
+    - "microsoft/vscode"  # Example: Microsoft's VS Code repository
+  knowledge_id: ""  # Set via GITHUB_KNOWLEDGE_ID environment variable
+
+# Confluence adapter configuration
+confluence:
+  enabled: false
+  base_url: "https://your-domain.atlassian.net"  # Your Confluence instance URL
+  username: "your-email@example.com"  # Your Confluence username (usually email)
+  api_key: ""  # Set via CONFLUENCE_API_KEY environment variable
+  spaces:
+    - "SPACEKEY1"  # Confluence space keys to sync
+    - "SPACEKEY2"
+    - "DOCS"  # Example: Documentation space
+  parent_page_ids:  # Optional: specific parent page IDs to process sub-pages only
+    - ""  # Add multiple parent page IDs as needed
+    - ""  # Example: "3098214470", "1234567890"
+  knowledge_id: ""  # OpenWebUI knowledge base ID for Confluence content
+  page_limit: 100  # Maximum pages to fetch per space (0 = no limit)
+  include_attachments: true  # Whether to download and sync page attachments
+
+# Example configurations for different environments:
+
+# Development
+# log_level: debug
+# schedule:
+#   interval: 5m
+# openwebui:
+#   base_url: "http://localhost:8080"
+#   api_key: "dev-api-key"
+# confluence:
+#   enabled: true
+#   base_url: "https://dev-company.atlassian.net"
+#   username: "dev-user@company.com"
+#   api_key: "dev-confluence-api-key"
+#   spaces:
+#     - "DEV"
+#   knowledge_id: "dev-knowledge-base-id"
+#   page_limit: 50
+#   include_attachments: false
+
+# Production
+# log_level: info
+# schedule:
+#   interval: 1h
+# openwebui:
+#   base_url: "https://openwebui.yourdomain.com"
+#   api_key: "prod-api-key"
+# confluence:
+#   enabled: true
+#   base_url: "https://company.atlassian.net"
+#   username: "sync-bot@company.com"
+#   api_key: "prod-confluence-api-key"
+#   spaces:
+#     - "DOCS"
+#     - "WIKI"
+#     - "PROJECTS"
+#   knowledge_id: "prod-knowledge-base-id"
+#   page_limit: 500
+#   include_attachments: true
+
+# Kubernetes (using environment variables)
+# All values should be set via environment variables or ConfigMap
+# log_level: info
+# schedule:
+#   interval: 1h
+# storage:
+#   path: /data
+# openwebui:
+#   base_url: ""  # Set via OPENWEBUI_BASE_URL
+#   api_key: ""   # Set via OPENWEBUI_API_KEY
+# github:
+#   enabled: true
+#   token: ""        # Set via GITHUB_TOKEN
+#   repositories: [] # Set via ConfigMap
+#   knowledge_id: "" # Set via GITHUB_KNOWLEDGE_ID
+# confluence:
+#   enabled: false
+#   base_url: ""     # Set in ConfigMap
+#   username: ""     # Set in ConfigMap
+#   api_key: ""      # Set via CONFLUENCE_API_KEY
+#   spaces: []       # Set in ConfigMap
+#   knowledge_id: "" # Set in ConfigMap
+#   page_limit: 100
+#   include_attachments: true

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connector-config
+  labels:
+    app: openwebui-content-sync
+data:
+  config.yaml: |
+    log_level: info
+    schedule:
+      interval: 1h
+    storage:
+      path: /data
+    openwebui:
+      base_url: "http://open-webui:8080"
+    github:
+      enabled: true
+      repositories:
+        - "owner/repo1"
+        - "owner/repo2"
+      knowledge_id: "fbc18bc4-72c1-40f0-84b1-52055368c583"
+    confluence:
+      enabled: false
+      base_url: "https://your-domain.atlassian.net"
+      username: "your-email@example.com"
+      spaces:
+        - "SPACEKEY1"
+        - "SPACEKEY2"
+      parent_page_ids: []
+      knowledge_id: "fbc18bc4-72c1-40f0-84b1-52055368c583"
+      page_limit: 100
+      include_attachments: true
