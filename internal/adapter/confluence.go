@@ -432,7 +432,6 @@ func (c *ConfluenceAdapter) fetchSpacePages(ctx context.Context, spaceID string)
 		}
 
 		url = nextURL
-		url = nextURL
 	}
 
 	return allPages, nil
