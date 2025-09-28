@@ -501,7 +501,12 @@ func (c *ConfluenceAdapter) processPage(ctx context.Context, page ConfluencePage
 	}
 
 	// Create filename from title
-	filename := c.SanitizeFilename(page.Title) + ".txt"
+	filename := c.SanitizeFilename(page.Title)
+	if c.config.UseMarkdownParser {
+		filename += ".md"
+	} else {
+		filename += ".txt"
+	}
 
 	// Format content as webui link + body content
 	webuiLink := ""
