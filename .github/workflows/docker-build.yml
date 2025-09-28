@@ -17,7 +17,7 @@ jobs:
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       -
-        name: Login to DockerHub
+        name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
@@ -30,6 +30,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          registry: ghcr.io
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ github.actor }}/openwebui-content-sync:latest
+          tags: ghcr.io/${{ github.actor }}/openwebui-content-sync:latest
           cache-from: type=gha
