@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/openwebui-content-sync/internal/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
@@ -558,11 +559,24 @@ func (c *ConfluenceAdapter) fetchPageBody(ctx context.Context, pageID string) (s
 
 	// Extract content from body.view.value
 	if page.Body.View.Value != "" {
-		// Convert HTML to plain text
+		// Convert HTML to plain text or markdown based on configuration
+		if c.config.UseMarkdownParser {
+			return c.HtmlToMarkdown(page.Body.View.Value), nil
+		}
 		return c.HtmlToText(page.Body.View.Value), nil
 	}
 
 	return "", fmt.Errorf("no content found in page body")
+}
+
+// HtmlToMarkdown converts HTML content to markdown
+func (c *ConfluenceAdapter) HtmlToMarkdown(htmlContent string) string {
+	markdown, err := htmltomarkdown.ConvertString(htmlContent)
+	if err != nil {
+		logrus.Warnf("Failed to convert HTML to markdown: %v", err)
+		return htmlContent
+	}
+	return markdown
 }
 
 // htmlToText converts HTML content to plain text
