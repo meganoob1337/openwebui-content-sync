@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	converter "github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
-	table "github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
 	"github.com/openwebui-content-sync/internal/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
