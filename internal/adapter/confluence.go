@@ -13,7 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JohannesKaufmann/html-to-markdown/v2"
+	converter "github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
+	table "github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
 	"github.com/openwebui-content-sync/internal/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
@@ -82,7 +85,8 @@ type ConfluenceVersion struct {
 
 // ConfluenceBody represents the body content
 type ConfluenceBody struct {
-	View ConfluenceBodyView `json:"view"`
+	View       ConfluenceBodyView `json:"view"`
+	ExportView ConfluenceBodyView `json:"export_view"`
 }
 
 // ConfluenceBodyView represents the view content
@@ -529,7 +533,7 @@ func (c *ConfluenceAdapter) processPage(ctx context.Context, page ConfluencePage
 
 // fetchPageBody fetches the body content of a specific page
 func (c *ConfluenceAdapter) fetchPageBody(ctx context.Context, pageID string) (string, error) {
-	url := fmt.Sprintf("%s/wiki/api/v2/pages/%s?body-format=view", c.config.BaseURL, pageID)
+	url := fmt.Sprintf("%s/wiki/api/v2/pages/%s?body-format=export_view", c.config.BaseURL, pageID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -556,14 +560,13 @@ func (c *ConfluenceAdapter) fetchPageBody(ctx context.Context, pageID string) (s
 	if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
-
 	// Extract content from body.view.value
-	if page.Body.View.Value != "" {
+	if page.Body.ExportView.Value != "" {
 		// Convert HTML to plain text or markdown based on configuration
 		if c.config.UseMarkdownParser {
-			return c.HtmlToMarkdown(page.Body.View.Value), nil
+			return c.HtmlToMarkdown(page.Body.ExportView.Value), nil
 		}
-		return c.HtmlToText(page.Body.View.Value), nil
+		return c.HtmlToText(page.Body.ExportView.Value), nil
 	}
 
 	return "", fmt.Errorf("no content found in page body")
@@ -571,7 +574,18 @@ func (c *ConfluenceAdapter) fetchPageBody(ctx context.Context, pageID string) (s
 
 // HtmlToMarkdown converts HTML content to markdown
 func (c *ConfluenceAdapter) HtmlToMarkdown(htmlContent string) string {
-	markdown, err := htmltomarkdown.ConvertString(htmlContent)
+	conv := converter.NewConverter(
+		converter.WithPlugins(
+			base.NewBasePlugin(),
+			commonmark.NewCommonmarkPlugin(
+				commonmark.WithStrongDelimiter("__"),
+				// ...additional configurations for the plugin
+			),
+			table.NewTablePlugin(),
+			// ...additional plugins (e.g. table)
+		),
+	)
+	markdown, err := conv.ConvertString(htmlContent)
 	if err != nil {
 		logrus.Warnf("Failed to convert HTML to markdown: %v", err)
 		return htmlContent
