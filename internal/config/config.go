@@ -77,6 +77,7 @@ type ConfluenceConfig struct {
 	PageLimit          int                 `yaml:"page_limit"`
 	IncludeAttachments bool                `yaml:"include_attachments"`
 	UseMarkdownParser  bool                `yaml:"use_mardown_parser"`
+	IncludeBlogPosts   bool                `yaml:"include_blog_posts"`
 }
 
 // LocalFolderConfig defines local folder adapter settings
