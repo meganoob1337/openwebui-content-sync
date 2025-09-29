@@ -13,6 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
 	"github.com/openwebui-content-sync/internal/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
@@ -81,7 +85,8 @@ type ConfluenceVersion struct {
 
 // ConfluenceBody represents the body content
 type ConfluenceBody struct {
-	View ConfluenceBodyView `json:"view"`
+	View       ConfluenceBodyView `json:"view"`
+	ExportView ConfluenceBodyView `json:"export_view"`
 }
 
 // ConfluenceBodyView represents the view content
@@ -129,6 +134,30 @@ type ConfluenceAttachment struct {
 // ConfluenceAttachmentList represents the response from listing attachments
 type ConfluenceAttachmentList struct {
 	Results []ConfluenceAttachment `json:"results"`
+	Links   map[string]interface{} `json:"_links"`
+}
+
+// ConfluenceBlogPost represents a blog post from Confluence API
+type ConfluenceBlogPost struct {
+	ID          string                 `json:"id"`
+	Status      string                 `json:"status"`
+	Title       string                 `json:"title"`
+	SpaceID     string                 `json:"spaceId"`
+	ParentID    string                 `json:"parentId"`
+	ParentType  string                 `json:"parentType"`
+	Position    int                    `json:"position"`
+	AuthorID    string                 `json:"authorId"`
+	OwnerID     string                 `json:"ownerId"`
+	LastOwnerID string                 `json:"lastOwnerId"`
+	CreatedAt   string                 `json:"createdAt"`
+	Version     ConfluenceVersion      `json:"version"`
+	Body        ConfluenceBody         `json:"body"`
+	Links       map[string]interface{} `json:"_links"`
+}
+
+// ConfluenceBlogPostList represents the response from listing blog posts
+type ConfluenceBlogPostList struct {
+	Results []ConfluenceBlogPost   `json:"results"`
 	Links   map[string]interface{} `json:"_links"`
 }
 
@@ -272,6 +301,27 @@ func (c *ConfluenceAdapter) FetchFiles(ctx context.Context) ([]*File, error) {
 				}
 				allFiles = append(allFiles, file)
 			}
+
+			// Step 4: Fetch blog posts from the space
+			if c.config.IncludeBlogPosts {
+				blogposts, err := c.fetchSpaceBlogposts(ctx, spaceID)
+				if err != nil {
+					logrus.Errorf("Failed to fetch blog posts from space %s: %v", spaceKey, err)
+					continue
+				}
+
+				logrus.Debugf("Found %d blog posts in space %s", len(blogposts), spaceKey)
+
+				// Step 5: Process each blog post
+				for _, blogpost := range blogposts {
+					file, err := c.processBlogpost(ctx, blogpost, knowledgeID)
+					if err != nil {
+						logrus.Errorf("Failed to process blog post %s: %v", blogpost.Title, err)
+						continue
+					}
+					allFiles = append(allFiles, file)
+				}
+			}
 		}
 	}
 
@@ -381,6 +431,7 @@ func (c *ConfluenceAdapter) fetchSpacePages(ctx context.Context, spaceID string)
 			nextURL = c.config.BaseURL + nextURL
 		}
 
+		url = nextURL
 		url = nextURL
 	}
 
@@ -496,7 +547,12 @@ func (c *ConfluenceAdapter) processPage(ctx context.Context, page ConfluencePage
 	}
 
 	// Create filename from title
-	filename := c.SanitizeFilename(page.Title) + ".txt"
+	filename := c.SanitizeFilename(page.Title)
+	if c.config.UseMarkdownParser {
+		filename += ".md"
+	} else {
+		filename += ".txt"
+	}
 
 	// Format content as webui link + body content
 	webuiLink := ""
@@ -528,7 +584,7 @@ func (c *ConfluenceAdapter) processPage(ctx context.Context, page ConfluencePage
 
 // fetchPageBody fetches the body content of a specific page
 func (c *ConfluenceAdapter) fetchPageBody(ctx context.Context, pageID string) (string, error) {
-	url := fmt.Sprintf("%s/wiki/api/v2/pages/%s?body-format=view", c.config.BaseURL, pageID)
+	url := fmt.Sprintf("%s/wiki/api/v2/pages/%s?body-format=export_view", c.config.BaseURL, pageID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -555,14 +611,219 @@ func (c *ConfluenceAdapter) fetchPageBody(ctx context.Context, pageID string) (s
 	if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
-
 	// Extract content from body.view.value
-	if page.Body.View.Value != "" {
-		// Convert HTML to plain text
-		return c.HtmlToText(page.Body.View.Value), nil
+	if page.Body.ExportView.Value != "" {
+		// Convert HTML to plain text or markdown based on configuration
+		if c.config.UseMarkdownParser {
+			return c.HtmlToMarkdown(page.Body.ExportView.Value), nil
+		}
+		return c.HtmlToText(page.Body.ExportView.Value), nil
 	}
 
 	return "", fmt.Errorf("no content found in page body")
+}
+
+// fetchSpaceBlogposts fetches all blog posts from a space using space ID
+func (c *ConfluenceAdapter) fetchSpaceBlogposts(ctx context.Context, spaceID string) ([]ConfluenceBlogPost, error) {
+	var allBlogposts []ConfluenceBlogPost
+	limit := c.config.PageLimit
+	if limit <= 0 {
+		limit = 100 // Default limit
+	}
+
+	url := fmt.Sprintf("%s/wiki/api/v2/spaces/%s/blogposts?limit=%d", c.config.BaseURL, spaceID, limit)
+
+	for {
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		// Set authentication
+		req.SetBasicAuth(c.config.Username, c.config.APIKey)
+		req.Header.Set("Accept", "application/json")
+
+		logrus.Debugf("Confluence blogposts API URL: %s", url)
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make request: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("API request failed with status %d: response body omitted", resp.StatusCode)
+		}
+
+		var blogpostList ConfluenceBlogPostList
+		if err := json.NewDecoder(resp.Body).Decode(&blogpostList); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		resp.Body.Close()
+
+		allBlogposts = append(allBlogposts, blogpostList.Results...)
+
+		// Check for next page
+		nextLink, hasNext := blogpostList.Links["next"]
+		if !hasNext {
+			break
+		}
+
+		nextURL, ok := nextLink.(string)
+		if !ok {
+			break
+		}
+		// Check if nextURL doesn't start with https
+		if nextURL != "" && !strings.HasPrefix(nextURL, "https") {
+			// Prepend the base URL
+			nextURL = c.config.BaseURL + nextURL
+		}
+
+		url = nextURL
+	}
+
+	return allBlogposts, nil
+}
+
+// fetchBlogpostByID fetches a specific blog post by its ID
+func (c *ConfluenceAdapter) fetchBlogpostByID(ctx context.Context, blogpostID string) (ConfluenceBlogPost, error) {
+	url := fmt.Sprintf("%s/wiki/api/v2/blogposts/%s", c.config.BaseURL, blogpostID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return ConfluenceBlogPost{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set authentication
+	req.SetBasicAuth(c.config.Username, c.config.APIKey)
+	req.Header.Set("Accept", "application/json")
+
+	logrus.Debugf("Confluence blogpost API URL: %s", url)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return ConfluenceBlogPost{}, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body) // Consume body for proper connection reuse
+		logrus.Errorf("Confluence blogpost API failed - Status: %d, URL: %s, Response: %s", resp.StatusCode, url, string(body))
+		return ConfluenceBlogPost{}, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var blogpost ConfluenceBlogPost
+	if err := json.NewDecoder(resp.Body).Decode(&blogpost); err != nil {
+		return ConfluenceBlogPost{}, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return blogpost, nil
+}
+
+// processBlogpost processes a single blog post and returns a File
+func (c *ConfluenceAdapter) processBlogpost(ctx context.Context, blogpost ConfluenceBlogPost, knowledgeID string) (*File, error) {
+	// Get the blog post body with content
+	blogpostBody, err := c.fetchBlogpostBody(ctx, blogpost.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch blogpost body: %w", err)
+	}
+
+	// Create filename from title
+	filename := c.SanitizeFilename(blogpost.Title)
+	if c.config.UseMarkdownParser {
+		filename += ".md"
+	} else {
+		filename += ".txt"
+	}
+
+	// Format content as webui link + body content
+	webuiLink := ""
+	if webui, exists := blogpost.Links["webui"]; exists {
+		if webuiStr, ok := webui.(string); ok {
+			webuiLink = webuiStr
+		}
+	}
+
+	content := fmt.Sprintf("%s\n\n%s", webuiLink, blogpostBody)
+
+	// Create file content
+	fileContent := []byte(content)
+
+	// Generate content hash for change detection
+	hash := sha256.Sum256(fileContent)
+	contentHash := base64.StdEncoding.EncodeToString(hash[:])
+
+	return &File{
+		Path:        filename,
+		Content:     fileContent,
+		Hash:        contentHash,
+		Modified:    c.lastSync,
+		Size:        int64(len(fileContent)),
+		Source:      "confluence",
+		KnowledgeID: knowledgeID,
+	}, nil
+}
+
+// fetchBlogpostBody fetches the body content of a specific blog post
+func (c *ConfluenceAdapter) fetchBlogpostBody(ctx context.Context, blogpostID string) (string, error) {
+	url := fmt.Sprintf("%s/wiki/api/v2/blogposts/%s?body-format=export_view", c.config.BaseURL, blogpostID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set authentication
+	req.SetBasicAuth(c.config.Username, c.config.APIKey)
+	req.Header.Set("Accept", "application/json")
+
+	logrus.Debugf("Confluence blogpost body API URL: %s", url)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API request failed with status %d: response body omitted", resp.StatusCode)
+	}
+
+	var blogpost ConfluenceBlogPost
+	if err := json.NewDecoder(resp.Body).Decode(&blogpost); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+	// Extract content from body.view.value
+	if blogpost.Body.ExportView.Value != "" {
+		// Convert HTML to plain text or markdown based on configuration
+		if c.config.UseMarkdownParser {
+			return c.HtmlToMarkdown(blogpost.Body.ExportView.Value), nil
+		}
+		return c.HtmlToText(blogpost.Body.ExportView.Value), nil
+	}
+
+	return "", fmt.Errorf("no content found in blogpost body")
+}
+
+// HtmlToMarkdown converts HTML content to markdown
+func (c *ConfluenceAdapter) HtmlToMarkdown(htmlContent string) string {
+	conv := converter.NewConverter(
+		converter.WithPlugins(
+			base.NewBasePlugin(),
+			commonmark.NewCommonmarkPlugin(
+				commonmark.WithStrongDelimiter("__"),
+				// ...additional configurations for the plugin
+			),
+			table.NewTablePlugin(),
+			// ...additional plugins (e.g. table)
+		),
+	)
+	markdown, err := conv.ConvertString(htmlContent)
+	if err != nil {
+		logrus.Warnf("Failed to convert HTML to markdown: %v", err)
+		return htmlContent
+	}
+	return markdown
 }
 
 // htmlToText converts HTML content to plain text

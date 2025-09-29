@@ -76,6 +76,8 @@ type ConfluenceConfig struct {
 	ParentPageMappings []ParentPageMapping `yaml:"parent_page_mappings"` // Per-parent-page knowledge mappings
 	PageLimit          int                 `yaml:"page_limit"`
 	IncludeAttachments bool                `yaml:"include_attachments"`
+	UseMarkdownParser  bool                `yaml:"use_markdown_parser"`
+	IncludeBlogPosts   bool                `yaml:"include_blog_posts"`
 }
 
 // LocalFolderConfig defines local folder adapter settings
