@@ -38,6 +38,7 @@ confluence:
   knowledge_id: "your-knowledge-base-id"
   page_limit: 100
   include_attachments: true
+  include_blog_posts: false
 ```
 
 ### Environment Variables
