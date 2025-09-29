@@ -72,6 +72,7 @@ data:
       knowledge_id: "your-knowledge-base-id"
       page_limit: 100
       include_attachments: true
+      use_mardown_parser: true
 ```
 
 #### Secrets
