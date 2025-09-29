@@ -107,6 +107,7 @@ The Confluence adapter uses Basic Authentication with your Confluence username a
 | `knowledge_id` | string | No | - | OpenWebUI knowledge base ID to sync content to |
 | `page_limit` | integer | No | `100` | Maximum number of pages to fetch per space |
 | `include_attachments` | boolean | No | `true` | Whether to download and sync page attachments |
+| `include_blog_posts` | boolean | No | `false` | Whether to download and sync blog posts |
 | `use_mardown_parser` | boolean | No | `false` | Whether to use markdown parser for HTML content conversion (true = markdown, false = plain text) |
 
 ## File Processing
