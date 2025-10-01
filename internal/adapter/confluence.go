@@ -561,8 +561,8 @@ func (c *ConfluenceAdapter) processPage(ctx context.Context, page ConfluencePage
 			webuiLink = webuiStr
 		}
 	}
-
-	content := fmt.Sprintf("%s\n\n%s", webuiLink, pageBody)
+	metaData := fmt.Sprintf("Author: %s\nCreatedAt: %s\nLinkToPage: %s", page.AuthorID, page.CreatedAt, c.config.BaseURL+"/wiki"+webuiLink)
+	content := fmt.Sprintf("%s\n\n%s", metaData, pageBody)
 
 	// Create file content
 	fileContent := []byte(content)
@@ -743,8 +743,9 @@ func (c *ConfluenceAdapter) processBlogpost(ctx context.Context, blogpost Conflu
 			webuiLink = webuiStr
 		}
 	}
+	metaData := fmt.Sprintf("Author: %s\nCreatedAt: %s\nLinkToPage: %s", blogpost.AuthorID, blogpost.CreatedAt, c.config.BaseURL+"/wiki"+webuiLink)
 
-	content := fmt.Sprintf("%s\n\n%s", webuiLink, blogpostBody)
+	content := fmt.Sprintf("%s\n\n%s", metaData, blogpostBody)
 
 	// Create file content
 	fileContent := []byte(content)
