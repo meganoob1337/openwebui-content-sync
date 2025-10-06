@@ -79,6 +79,7 @@ type ConfluenceConfig struct {
 	IncludeAttachments bool                `yaml:"include_attachments"`
 	UseMarkdownParser  bool                `yaml:"use_markdown_parser"`
 	IncludeBlogPosts   bool                `yaml:"include_blog_posts"`
+	AddAdditionalData  bool                `yaml:"add_additional_data"`
 }
 
 // LocalFolderConfig defines local folder adapter settings
