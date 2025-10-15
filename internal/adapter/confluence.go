@@ -140,6 +140,7 @@ type ConfluenceAttachmentList struct {
 
 // ConfluenceBlogPost represents a blog post from Confluence API
 type ConfluenceBlogPost struct {
+<<<<<<< HEAD
 	ID                string                 `json:"id"`
 	Status            string                 `json:"status"`
 	Title             string                 `json:"title"`
@@ -155,6 +156,22 @@ type ConfluenceBlogPost struct {
 	Version           ConfluenceVersion      `json:"version"`
 	Body              ConfluenceBody         `json:"body"`
 	Links             map[string]interface{} `json:"_links"`
+=======
+	ID          string                 `json:"id"`
+	Status      string                 `json:"status"`
+	Title       string                 `json:"title"`
+	SpaceID     string                 `json:"spaceId"`
+	ParentID    string                 `json:"parentId"`
+	ParentType  string                 `json:"parentType"`
+	Position    int                    `json:"position"`
+	AuthorID    string                 `json:"authorId"`
+	OwnerID     string                 `json:"ownerId"`
+	LastOwnerID string                 `json:"lastOwnerId"`
+	CreatedAt   string                 `json:"createdAt"`
+	Version     ConfluenceVersion      `json:"version"`
+	Body        ConfluenceBody         `json:"body"`
+	Links       map[string]interface{} `json:"_links"`
+>>>>>>> upstream/main
 }
 
 // ConfluenceBlogPostList represents the response from listing blog posts
@@ -163,6 +180,7 @@ type ConfluenceBlogPostList struct {
 	Links   map[string]interface{} `json:"_links"`
 }
 
+<<<<<<< HEAD
 // ConfluenceUser represents a user from Confluence API
 type ConfluenceUser struct {
 	AccountID        string                     `json:"accountId"`
@@ -197,6 +215,8 @@ type ConfluenceGroups struct {
 	Size  int           `json:"size"`
 }
 
+=======
+>>>>>>> upstream/main
 // NewConfluenceAdapter creates a new Confluence adapter
 func NewConfluenceAdapter(cfg config.ConfluenceConfig) (*ConfluenceAdapter, error) {
 	if cfg.BaseURL == "" {
@@ -469,6 +489,7 @@ func (c *ConfluenceAdapter) fetchSpacePages(ctx context.Context, spaceID string)
 
 		url = nextURL
 		url = nextURL
+<<<<<<< HEAD
 	}
 
 	// Extract all unique AuthorIDs from pages
@@ -500,6 +521,8 @@ func (c *ConfluenceAdapter) fetchSpacePages(ctx context.Context, spaceID string)
 				}
 			}
 		}
+=======
+>>>>>>> upstream/main
 	}
 
 	return allPages, nil
@@ -750,6 +773,7 @@ func (c *ConfluenceAdapter) fetchSpaceBlogposts(ctx context.Context, spaceID str
 		url = nextURL
 	}
 
+<<<<<<< HEAD
 	// Extract all unique AuthorIDs from blogposts
 	authorIDs := make(map[string]bool)
 	for _, blogpost := range allBlogposts {
@@ -781,6 +805,8 @@ func (c *ConfluenceAdapter) fetchSpaceBlogposts(ctx context.Context, spaceID str
 		}
 	}
 
+=======
+>>>>>>> upstream/main
 	return allBlogposts, nil
 }
 
@@ -841,9 +867,14 @@ func (c *ConfluenceAdapter) processBlogpost(ctx context.Context, blogpost Conflu
 			webuiLink = webuiStr
 		}
 	}
+<<<<<<< HEAD
 	metaData := fmt.Sprintf("Author: %s\nCreatedAt: %s\nLinkToPage: %s", blogpost.AuthorDisplayName, blogpost.CreatedAt, c.config.BaseURL+"/wiki"+webuiLink)
 
 	content := fmt.Sprintf("%s\n\n%s", metaData, blogpostBody)
+=======
+
+	content := fmt.Sprintf("%s\n\n%s", webuiLink, blogpostBody)
+>>>>>>> upstream/main
 
 	// Create file content
 	fileContent := []byte(content)
