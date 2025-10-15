@@ -65,6 +65,20 @@ local_folders:
     - folder_path: "/path/to/notes"
       knowledge_id: "notes-knowledge-base"
 
+# Jira adapter configuration
+jira:
+  enabled: false
+  base_url: "https://your-domain.atlassian.net"  # Your Jira instance URL
+  username: "your-email@example.com"  # Your Jira username (usually email)
+  api_key: ""  # Set via JIRA_API_KEY environment variable
+  page_limit: 100  # Maximum pages to fetch per space (0 = no limit)
+
+  project_mappings:
+    - project_key: "PROJ"
+      knowledge_id: "your-knowledge-base-id"
+    - project_key: "ANOTHER"
+      knowledge_id: "another-knowledge-base-id"
+
 # Example configurations for different environments:
 
 # Development

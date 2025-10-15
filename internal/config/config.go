@@ -16,6 +16,7 @@ type Config struct {
 	OpenWebUI    OpenWebUIConfig   `yaml:"openwebui"`
 	GitHub       GitHubConfig      `yaml:"github"`
 	Confluence   ConfluenceConfig  `yaml:"confluence"`
+	Jira         JiraConfig        `yaml:"jira"`
 	LocalFolders LocalFolderConfig `yaml:"local_folders"`
 }
 
@@ -87,6 +88,22 @@ type LocalFolderConfig struct {
 	Mappings []LocalFolderMapping `yaml:"mappings"` // Per-folder knowledge mappings
 }
 
+// JiraProjectMapping defines a mapping between a Jira project and a knowledge base
+type JiraProjectMapping struct {
+	ProjectKey  string `yaml:"project_key"`
+	KnowledgeID string `yaml:"knowledge_id"`
+}
+
+// JiraConfig defines Jira adapter settings
+type JiraConfig struct {
+	Enabled         bool                 `yaml:"enabled"`
+	BaseURL         string               `yaml:"base_url"`
+	Username        string               `yaml:"username"`
+	APIKey          string               `yaml:"api_key"`
+	ProjectMappings []JiraProjectMapping `yaml:"project_mappings"` // Per-project knowledge mappings
+	PageLimit       int                  `yaml:"page_limit"`
+}
+
 // Load loads configuration from file and environment variables
 func Load(path string) (*Config, error) {
 	fmt.Printf("Loading configuration from: %s\n", path)
@@ -117,6 +134,13 @@ func Load(path string) (*Config, error) {
 			ParentPageMappings: []ParentPageMapping{},
 			PageLimit:          100,
 			IncludeAttachments: true,
+		},
+		Jira: JiraConfig{
+			Enabled:         false,
+			BaseURL:         "",
+			Username:        "",
+			APIKey:          getEnv("JIRA_API_KEY", ""),
+			ProjectMappings: []JiraProjectMapping{},
 		},
 		LocalFolders: LocalFolderConfig{
 			Enabled:  false,
@@ -156,6 +180,7 @@ func Load(path string) (*Config, error) {
 	cfg.OpenWebUI.APIKey = getEnv("OPENWEBUI_API_KEY", cfg.OpenWebUI.APIKey)
 	cfg.GitHub.Token = getEnv("GITHUB_TOKEN", cfg.GitHub.Token)
 	cfg.Confluence.APIKey = getEnv("CONFLUENCE_API_KEY", cfg.Confluence.APIKey)
+	cfg.Jira.APIKey = getEnv("CONFLUENCE_API_KEY", cfg.Jira.APIKey)
 	cfg.Storage.Path = getEnv("STORAGE_PATH", cfg.Storage.Path)
 
 	fmt.Printf("Final OpenWebUI BaseURL: %s\n", cfg.OpenWebUI.BaseURL)

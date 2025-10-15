@@ -307,6 +307,46 @@ local_folders:
   knowledge_id: "local-knowledge-base"
 ```
 
+## Jira Adapter
+
+The Jira adapter syncs Jira issues from specified projects to OpenWebUI knowledge bases.
+
+### Jira Configuration
+
+Map different Jira projects to different knowledge bases:
+
+```yaml
+jira:
+  enabled: true
+  base_url: "https://your-domain.atlassian.net"
+  username: "your-email@example.com"
+  api_key: ""  # Set via JIRA_API_KEY environment variable
+  project_mappings:
+    - project_key: "PROJ"
+      knowledge_id: "project-knowledge-base"
+    - project_key: "ANOTHER"
+      knowledge_id: "another-knowledge-base"
+```
+
+### Jira Features
+
+- **Project-based Sync**: Sync all issues from specified Jira projects
+- **Multiple Knowledge Bases**: Map different projects to different knowledge bases
+- **JSON Export**: Each issue is returned as a JSON file
+- **Content Hashing**: Only syncs changed issues based on SHA256 hashes
+- **File Naming**: Issues are saved as `{issue-key}.json`
+
+### Jira Example Output
+
+```
+INFO[0000] Syncing files from adapter: jira
+DEBU[0000] Fetching files from Jira project: PROJ
+DEBU[0000] Found 25 issues in Jira project PROJ
+INFO[0001] Successfully synced file: PROJ-123.json
+INFO[0001] Successfully synced file: PROJ-124.json
+INFO[0001] Successfully synced file: PROJ-125.json
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -319,6 +359,7 @@ local_folders:
 - `CONFLUENCE_BASE_URL`: Confluence instance URL (optional, can be set in config)
 - `CONFLUENCE_USERNAME`: Confluence username (optional, can be set in config)
 - `CONFLUENCE_KNOWLEDGE_ID`: OpenWebUI knowledge ID for Confluence files
+- `JIRA_API_KEY`: Jira API key
 - `STORAGE_PATH`: Local storage path (default: /data)
 - `LOG_LEVEL`: Log level (debug, info, warn, error)
 
@@ -359,6 +400,19 @@ confluence:
   knowledge_id: ""  # Set via CONFLUENCE_KNOWLEDGE_ID environment variable
   page_limit: 100  # Maximum pages to fetch per space (0 = no limit)
   include_attachments: true  # Whether to download and sync page attachments
+
+# Jira adapter configuration
+jira:
+  enabled: false
+  base_url: "https://your-domain.atlassian.net"
+  username: "your-email@example.com"
+  page_limit: 100  # Maximum pages to fetch per space (default = 100)
+  api_key: ""  # Set via JIRA_API_KEY environment variable
+  project_mappings:
+    - project_key: "PROJ"
+      knowledge_id: "your-knowledge-base-id"
+    - project_key: "ANOTHER"
+      knowledge_id: "another-knowledge-base-id"
 ```
 
 ## Adapter Architecture
