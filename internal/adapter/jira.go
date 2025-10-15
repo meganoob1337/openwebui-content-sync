@@ -367,7 +367,7 @@ func (j *JiraAdapter) fetchAllIssueIDs(ctx context.Context, projectKey string) (
 
 		// Build URL for search endpoint with pagination - following the exact API specification
 		url := fmt.Sprintf("%s/rest/api/3/search/jql?jql=%s&maxResults=%d&fields=id%s",
-			j.config.BaseURL, url.QueryEscape(jqlQuery), maxResults, startAt, nextPageToken)
+			j.config.BaseURL, url.QueryEscape(jqlQuery), maxResults, nextPageToken)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
