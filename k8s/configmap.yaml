@@ -43,3 +43,28 @@ data:
           knowledge_id: "docs-knowledge-base"
         - folder_path: "/data/guides"
           knowledge_id: "guides-knowledge-base"
+    slack:
+      enabled: false
+      token: ""
+      channel_mappings:
+        - channel_id: "C1234567890"
+          channel_name: "general"
+          knowledge_id: "general-knowledge-base"
+        - channel_id: "C0987654321"
+          channel_name: "dev-team"
+          knowledge_id: "dev-knowledge-base"
+      regex_patterns:
+        - pattern: "^sales-.*-internal$"
+          knowledge_id: "sales-knowledge-base"
+          auto_join: true
+        - pattern: "^dev-.*"
+          knowledge_id: "dev-knowledge-base"
+          auto_join: true
+        - pattern: "^support-.*"
+          knowledge_id: "support-knowledge-base"
+          auto_join: false
+      days_to_fetch: 30
+      maintain_history: false
+      message_limit: 1000
+      include_threads: true
+      include_reactions: false
