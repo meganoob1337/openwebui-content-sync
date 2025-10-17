@@ -98,6 +98,19 @@ slack:
   message_limit: 1000      # Max messages per channel per run (default: 1000)
   include_threads: true    # Whether to include thread messages (default: true)
   include_reactions: false # Whether to include reaction data (default: false)
+# Jira adapter configuration
+jira:
+  enabled: false
+  base_url: "https://your-domain.atlassian.net"  # Your Jira instance URL
+  username: "your-email@example.com"  # Your Jira username (usually email)
+  api_key: ""  # Set via JIRA_API_KEY environment variable
+  page_limit: 100  # Maximum pages to fetch per space (0 = no limit)
+
+  project_mappings:
+    - project_key: "PROJ"
+      knowledge_id: "your-knowledge-base-id"
+    - project_key: "ANOTHER"
+      knowledge_id: "another-knowledge-base-id"
 
 # Example configurations for different environments:
 

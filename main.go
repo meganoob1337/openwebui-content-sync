@@ -89,6 +89,14 @@ func main() {
 		}
 		adapters = append(adapters, slackAdapter)
 	}
+	// Add Jira adapter if configured
+	if cfg.Jira.Enabled {
+		jiraAdapter, err := adapter.NewJiraAdapter(cfg.Jira)
+		if err != nil {
+			logrus.Fatalf("Failed to create Jira adapter: %v", err)
+		}
+		adapters = append(adapters, jiraAdapter)
+	}
 
 	// Initialize sync manager
 	syncManager, err := sync.NewManager(cfg.OpenWebUI, cfg.Storage)

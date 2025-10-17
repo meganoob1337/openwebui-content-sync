@@ -110,6 +110,7 @@ The Confluence adapter uses Basic Authentication with your Confluence username a
 | `include_attachments` | boolean | No | `true` | Whether to download and sync page attachments |
 | `include_blog_posts` | boolean | No | `false` | Whether to download and sync blog posts |
 | `use_markdown_parser` | boolean | No | `false` | Whether to use markdown parser for HTML content conversion (true = markdown, false = plain text) |
+| `add_additional_data` | boolean | No | `false` | Whether to fetch additional user data (display names) for pages and blog posts |
 
 ## File Processing
 

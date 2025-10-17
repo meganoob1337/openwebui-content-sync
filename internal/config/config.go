@@ -16,6 +16,7 @@ type Config struct {
 	OpenWebUI    OpenWebUIConfig   `yaml:"openwebui"`
 	GitHub       GitHubConfig      `yaml:"github"`
 	Confluence   ConfluenceConfig  `yaml:"confluence"`
+	Jira         JiraConfig        `yaml:"jira"`
 	LocalFolders LocalFolderConfig `yaml:"local_folders"`
 	Slack        SlackConfig       `yaml:"slack"`
 }
@@ -79,6 +80,7 @@ type ConfluenceConfig struct {
 	IncludeAttachments bool                `yaml:"include_attachments"`
 	UseMarkdownParser  bool                `yaml:"use_markdown_parser"`
 	IncludeBlogPosts   bool                `yaml:"include_blog_posts"`
+	AddAdditionalData  bool                `yaml:"add_additional_data"`
 }
 
 // LocalFolderConfig defines local folder adapter settings
@@ -114,6 +116,22 @@ type RegexPattern struct {
 	AutoJoin    bool   `yaml:"auto_join"`    // Whether to automatically join matching channels
 }
 
+// JiraProjectMapping defines a mapping between a Jira project and a knowledge base
+type JiraProjectMapping struct {
+	ProjectKey  string `yaml:"project_key"`
+	KnowledgeID string `yaml:"knowledge_id"`
+}
+
+// JiraConfig defines Jira adapter settings
+type JiraConfig struct {
+	Enabled         bool                 `yaml:"enabled"`
+	BaseURL         string               `yaml:"base_url"`
+	Username        string               `yaml:"username"`
+	APIKey          string               `yaml:"api_key"`
+	ProjectMappings []JiraProjectMapping `yaml:"project_mappings"` // Per-project knowledge mappings
+	PageLimit       int                  `yaml:"page_limit"`
+}
+
 // Load loads configuration from file and environment variables
 func Load(path string) (*Config, error) {
 	fmt.Printf("Loading configuration from: %s\n", path)
@@ -146,6 +164,13 @@ func Load(path string) (*Config, error) {
 			IncludeAttachments: true,
 			UseMarkdownParser:  false,
 			IncludeBlogPosts:   false,
+		},
+		Jira: JiraConfig{
+			Enabled:         false,
+			BaseURL:         "",
+			Username:        "",
+			APIKey:          getEnv("JIRA_API_KEY", ""),
+			ProjectMappings: []JiraProjectMapping{},
 		},
 		LocalFolders: LocalFolderConfig{
 			Enabled:  false,
@@ -195,6 +220,7 @@ func Load(path string) (*Config, error) {
 	cfg.OpenWebUI.APIKey = getEnv("OPENWEBUI_API_KEY", cfg.OpenWebUI.APIKey)
 	cfg.GitHub.Token = getEnv("GITHUB_TOKEN", cfg.GitHub.Token)
 	cfg.Confluence.APIKey = getEnv("CONFLUENCE_API_KEY", cfg.Confluence.APIKey)
+	cfg.Jira.APIKey = getEnv("CONFLUENCE_API_KEY", cfg.Jira.APIKey)
 	cfg.Storage.Path = getEnv("STORAGE_PATH", cfg.Storage.Path)
 
 	fmt.Printf("Final OpenWebUI BaseURL: %s\n", cfg.OpenWebUI.BaseURL)

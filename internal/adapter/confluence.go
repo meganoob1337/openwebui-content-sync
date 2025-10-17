@@ -58,20 +58,21 @@ type ConfluenceSpaceList struct {
 
 // ConfluencePage represents a page from Confluence API
 type ConfluencePage struct {
-	ID          string                 `json:"id"`
-	Status      string                 `json:"status"`
-	Title       string                 `json:"title"`
-	SpaceID     string                 `json:"spaceId"`
-	ParentID    string                 `json:"parentId"`
-	ParentType  string                 `json:"parentType"`
-	Position    int                    `json:"position"`
-	AuthorID    string                 `json:"authorId"`
-	OwnerID     string                 `json:"ownerId"`
-	LastOwnerID string                 `json:"lastOwnerId"`
-	CreatedAt   string                 `json:"createdAt"`
-	Version     ConfluenceVersion      `json:"version"`
-	Body        ConfluenceBody         `json:"body"`
-	Links       map[string]interface{} `json:"_links"`
+	ID                string                 `json:"id"`
+	Status            string                 `json:"status"`
+	Title             string                 `json:"title"`
+	SpaceID           string                 `json:"spaceId"`
+	ParentID          string                 `json:"parentId"`
+	ParentType        string                 `json:"parentType"`
+	Position          int                    `json:"position"`
+	AuthorID          string                 `json:"authorId"`
+	AuthorDisplayName string                 `json:"authorDisplayName"`
+	OwnerID           string                 `json:"ownerId"`
+	LastOwnerID       string                 `json:"lastOwnerId"`
+	CreatedAt         string                 `json:"createdAt"`
+	Version           ConfluenceVersion      `json:"version"`
+	Body              ConfluenceBody         `json:"body"`
+	Links             map[string]interface{} `json:"_links"`
 }
 
 // ConfluenceVersion represents version information
@@ -139,26 +140,61 @@ type ConfluenceAttachmentList struct {
 
 // ConfluenceBlogPost represents a blog post from Confluence API
 type ConfluenceBlogPost struct {
-	ID          string                 `json:"id"`
-	Status      string                 `json:"status"`
-	Title       string                 `json:"title"`
-	SpaceID     string                 `json:"spaceId"`
-	ParentID    string                 `json:"parentId"`
-	ParentType  string                 `json:"parentType"`
-	Position    int                    `json:"position"`
-	AuthorID    string                 `json:"authorId"`
-	OwnerID     string                 `json:"ownerId"`
-	LastOwnerID string                 `json:"lastOwnerId"`
-	CreatedAt   string                 `json:"createdAt"`
-	Version     ConfluenceVersion      `json:"version"`
-	Body        ConfluenceBody         `json:"body"`
-	Links       map[string]interface{} `json:"_links"`
+	ID                string                 `json:"id"`
+	Status            string                 `json:"status"`
+	Title             string                 `json:"title"`
+	SpaceID           string                 `json:"spaceId"`
+	ParentID          string                 `json:"parentId"`
+	ParentType        string                 `json:"parentType"`
+	Position          int                    `json:"position"`
+	AuthorID          string                 `json:"authorId"`
+	AuthorDisplayName string                 `json:"authorDisplayName"`
+	OwnerID           string                 `json:"ownerId"`
+	LastOwnerID       string                 `json:"lastOwnerId"`
+	CreatedAt         string                 `json:"createdAt"`
+	Version           ConfluenceVersion      `json:"version"`
+	Body              ConfluenceBody         `json:"body"`
+	Links             map[string]interface{} `json:"_links"`
 }
 
 // ConfluenceBlogPostList represents the response from listing blog posts
 type ConfluenceBlogPostList struct {
 	Results []ConfluenceBlogPost   `json:"results"`
 	Links   map[string]interface{} `json:"_links"`
+}
+
+// ConfluenceUser represents a user from Confluence API
+type ConfluenceUser struct {
+	AccountID        string                     `json:"accountId"`
+	AccountType      string                     `json:"accountType"`
+	Active           bool                       `json:"active"`
+	ApplicationRoles ConfluenceApplicationRoles `json:"applicationRoles"`
+	AvatarURLs       map[string]string          `json:"avatarUrls"`
+	DisplayName      string                     `json:"displayName"`
+	EmailAddress     string                     `json:"emailAddress"`
+	Groups           ConfluenceGroups           `json:"groups"`
+	Key              string                     `json:"key"`
+	Name             string                     `json:"name"`
+	Self             string                     `json:"self"`
+	TimeZone         string                     `json:"timeZone"`
+}
+
+// ConfluenceUserList represents the response from listing users
+type ConfluenceUserList struct {
+	Results []ConfluenceUser       `json:"results"`
+	Links   map[string]interface{} `json:"_links"`
+}
+
+// ConfluenceApplicationRoles represents application roles for a user
+type ConfluenceApplicationRoles struct {
+	Items []interface{} `json:"items"`
+	Size  int           `json:"size"`
+}
+
+// ConfluenceGroups represents groups for a user
+type ConfluenceGroups struct {
+	Items []interface{} `json:"items"`
+	Size  int           `json:"size"`
 }
 
 // NewConfluenceAdapter creates a new Confluence adapter
@@ -435,6 +471,37 @@ func (c *ConfluenceAdapter) fetchSpacePages(ctx context.Context, spaceID string)
 		url = nextURL
 	}
 
+	// Extract all unique AuthorIDs from pages
+	authorIDs := make(map[string]bool)
+	for _, page := range allPages {
+		if page.AuthorID != "" {
+			authorIDs[page.AuthorID] = true
+		}
+	}
+
+	// If we have author IDs and additional data is enabled, fetch user information
+	if c.config.AddAdditionalData && len(authorIDs) > 0 {
+		// Convert map keys to slice
+		accountIDs := make([]string, 0, len(authorIDs))
+		for accountID := range authorIDs {
+			accountIDs = append(accountIDs, accountID)
+		}
+
+		// Fetch users by IDs
+		users, err := c.fetchUsersByIds(ctx, accountIDs)
+		if err != nil {
+			logrus.Errorf("Failed to fetch users for pages: %v", err)
+			// Continue without user information if fetch fails
+		} else {
+			// Update pages with user display names
+			for i := range allPages {
+				if user, exists := users[allPages[i].AuthorID]; exists {
+					allPages[i].AuthorDisplayName = user.DisplayName
+				}
+			}
+		}
+	}
+
 	return allPages, nil
 }
 
@@ -561,8 +628,8 @@ func (c *ConfluenceAdapter) processPage(ctx context.Context, page ConfluencePage
 			webuiLink = webuiStr
 		}
 	}
-
-	content := fmt.Sprintf("%s\n\n%s", webuiLink, pageBody)
+	metaData := fmt.Sprintf("---\nAuthor: %s\nCreatedAt: %s\nLinkToPage: %s\nTitle: %s\n---", page.AuthorDisplayName, page.CreatedAt, c.config.BaseURL+"/wiki"+webuiLink, page.Title)
+	content := fmt.Sprintf("%s\n\n%s", metaData, pageBody)
 
 	// Create file content
 	fileContent := []byte(content)
@@ -683,6 +750,37 @@ func (c *ConfluenceAdapter) fetchSpaceBlogposts(ctx context.Context, spaceID str
 		url = nextURL
 	}
 
+	// Extract all unique AuthorIDs from blogposts
+	authorIDs := make(map[string]bool)
+	for _, blogpost := range allBlogposts {
+		if blogpost.AuthorID != "" {
+			authorIDs[blogpost.AuthorID] = true
+		}
+	}
+
+	// If we have author IDs and additional data is enabled, fetch user information
+	if c.config.AddAdditionalData && len(authorIDs) > 0 {
+		// Convert map keys to slice
+		accountIDs := make([]string, 0, len(authorIDs))
+		for accountID := range authorIDs {
+			accountIDs = append(accountIDs, accountID)
+		}
+
+		// Fetch users by IDs
+		users, err := c.fetchUsersByIds(ctx, accountIDs)
+		if err != nil {
+			logrus.Errorf("Failed to fetch users for blogposts: %v", err)
+			// Continue without user information if fetch fails
+		} else {
+			// Update blogposts with user display names
+			for i := range allBlogposts {
+				if user, exists := users[allBlogposts[i].AuthorID]; exists {
+					allBlogposts[i].AuthorDisplayName = user.DisplayName
+				}
+			}
+		}
+	}
+
 	return allBlogposts, nil
 }
 
@@ -743,8 +841,9 @@ func (c *ConfluenceAdapter) processBlogpost(ctx context.Context, blogpost Conflu
 			webuiLink = webuiStr
 		}
 	}
+	metaData := fmt.Sprintf("Author: %s\nCreatedAt: %s\nLinkToPage: %s", blogpost.AuthorDisplayName, blogpost.CreatedAt, c.config.BaseURL+"/wiki"+webuiLink)
 
-	content := fmt.Sprintf("%s\n\n%s", webuiLink, blogpostBody)
+	content := fmt.Sprintf("%s\n\n%s", metaData, blogpostBody)
 
 	// Create file content
 	fileContent := []byte(content)
@@ -922,4 +1021,65 @@ func (c *ConfluenceAdapter) GetLastSync() time.Time {
 // SetLastSync sets the last sync time
 func (c *ConfluenceAdapter) SetLastSync(t time.Time) {
 	c.lastSync = t
+}
+
+// fetchUsersByIds fetches user information for multiple account IDs using the bulk API
+func (c *ConfluenceAdapter) fetchUsersByIds(ctx context.Context, accountIds []string) (map[string]*ConfluenceUser, error) {
+	// Create the request body
+	requestBody := map[string]interface{}{
+		"accountIds": accountIds,
+	}
+
+	// Marshal the request body
+	body, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	// Prepare the URL for the bulk user lookup endpoint
+	url := fmt.Sprintf("%s/wiki/api/v2/users-bulk", c.config.BaseURL)
+
+	// Create the request
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(body)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set authentication and headers
+	req.SetBasicAuth(c.config.Username, c.config.APIKey)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+
+	logrus.Debugf("Confluence bulk user API URL: %s", url)
+	logrus.Debugf("Confluence bulk user request body: %s", string(body))
+
+	// Make the request
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body) // Consume body for proper connection reuse
+		logrus.Errorf("Confluence bulk user API failed - Status: %d, URL: %s, Response: %s", resp.StatusCode, url, string(body))
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse the response
+	var userResponse struct {
+		Results []ConfluenceUser `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&userResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Create a map of account IDs to users for easy lookup
+	userMap := make(map[string]*ConfluenceUser)
+	for i := range userResponse.Results {
+		user := &userResponse.Results[i]
+		userMap[user.AccountID] = user
+	}
+
+	return userMap, nil
 }
