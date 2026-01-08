@@ -598,7 +598,10 @@ func (c *ConfluenceAdapter) fetchSubPages(ctx context.Context, parentPageID stri
 		if !ok {
 			break
 		}
-
+		if nextURL != "" && !strings.HasPrefix(nextURL, "https") {
+			// Prepend the base URL
+			nextURL = c.config.BaseURL + nextURL
+		}
 		url = nextURL
 	}
 
